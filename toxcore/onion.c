@@ -287,8 +287,8 @@ int create_onion_packet_tcp(uint8_t *packet, uint16_t max_packet_length, const O
  */
 int send_onion_packet(Networking_Core *net, const Onion_Path *path, IP_Port dest, const uint8_t *data, uint16_t length)
 {
-    uint8_t packet[ONION_MAX_PACKET_SIZE];
-    int len = create_onion_packet(packet, sizeof(packet), path, dest, data, length);
+    ELASTOS_VLA(uint8_t, packet, ONION_MAX_PACKET_SIZE);
+    int len = create_onion_packet(packet, ELASTOS_SIZEOF_VLA(packet), path, dest, data, length);
 
     if (len == -1) {
         return -1;
@@ -313,12 +313,12 @@ int send_onion_response(Networking_Core *net, IP_Port dest, const uint8_t *data,
         return -1;
     }
 
-    VLA(uint8_t, packet, 1 + RETURN_3 + length);
+    ELASTOS_VLA(uint8_t, packet, 1 + RETURN_3 + length);
     packet[0] = NET_PACKET_ONION_RECV_3;
     memcpy(packet + 1, ret, RETURN_3);
     memcpy(packet + 1 + RETURN_3, data, length);
 
-    if ((uint32_t)sendpacket(net, dest, packet, SIZEOF_VLA(packet)) != SIZEOF_VLA(packet)) {
+    if ((uint32_t)sendpacket(net, dest, packet, ELASTOS_SIZEOF_VLA(packet)) != ELASTOS_SIZEOF_VLA(packet)) {
         return -1;
     }
 
@@ -371,7 +371,7 @@ int onion_send_1(const Onion *onion, const uint8_t *plain, uint16_t len, IP_Port
     uint8_t ip_port[SIZE_IPPORT];
     ipport_pack(ip_port, &source);
 
-    uint8_t data[ONION_MAX_PACKET_SIZE];
+    ELASTOS_VLA(uint8_t, data, ONION_MAX_PACKET_SIZE);
     data[0] = NET_PACKET_ONION_SEND_1;
     memcpy(data + 1, nonce, CRYPTO_NONCE_SIZE);
     memcpy(data + 1 + CRYPTO_NONCE_SIZE, plain + SIZE_IPPORT, len - SIZE_IPPORT);
@@ -424,7 +424,7 @@ static int handle_send_1(void *object, IP_Port source, const uint8_t *packet, ui
         return 1;
     }
 
-    uint8_t data[ONION_MAX_PACKET_SIZE];
+    ELASTOS_VLA(uint8_t, data, ONION_MAX_PACKET_SIZE);
     data[0] = NET_PACKET_ONION_SEND_2;
     memcpy(data + 1, packet + 1, CRYPTO_NONCE_SIZE);
     memcpy(data + 1 + CRYPTO_NONCE_SIZE, plain + SIZE_IPPORT, len - SIZE_IPPORT);
@@ -480,7 +480,7 @@ static int handle_send_2(void *object, IP_Port source, const uint8_t *packet, ui
         return 1;
     }
 
-    uint8_t data[ONION_MAX_PACKET_SIZE];
+    ELASTOS_VLA(uint8_t, data, ONION_MAX_PACKET_SIZE);
     memcpy(data, plain + SIZE_IPPORT, len - SIZE_IPPORT);
     uint16_t data_len = (len - SIZE_IPPORT);
     uint8_t *ret_part = data + (len - SIZE_IPPORT);
@@ -533,7 +533,7 @@ static int handle_recv_3(void *object, IP_Port source, const uint8_t *packet, ui
         return 1;
     }
 
-    uint8_t data[ONION_MAX_PACKET_SIZE];
+    ELASTOS_VLA(uint8_t, data, ONION_MAX_PACKET_SIZE);
     data[0] = NET_PACKET_ONION_RECV_2;
     memcpy(data + 1, plain + SIZE_IPPORT, RETURN_2);
     memcpy(data + 1 + RETURN_2, packet + 1 + RETURN_3, length - (1 + RETURN_3));
@@ -574,7 +574,7 @@ static int handle_recv_2(void *object, IP_Port source, const uint8_t *packet, ui
         return 1;
     }
 
-    uint8_t data[ONION_MAX_PACKET_SIZE];
+    ELASTOS_VLA(uint8_t, data, ONION_MAX_PACKET_SIZE);
     data[0] = NET_PACKET_ONION_RECV_1;
     memcpy(data + 1, plain + SIZE_IPPORT, RETURN_1);
     memcpy(data + 1 + RETURN_1, packet + 1 + RETURN_2, length - (1 + RETURN_2));

@@ -2940,6 +2940,18 @@ uint16_t tox_self_get_udp_port(const Tox *tox, TOX_ERR_GET_PORT *error);
  */
 uint16_t tox_self_get_tcp_port(const Tox *tox, TOX_ERR_GET_PORT *error);
 
+#if defined(ELASTOS_BUILD)
+/* Return a random TCP relay address for use as address of turn server.
+ *
+ * As to be sure, application need to call this function more than or
+ * at least 5 times on failure.
+ *
+ * return 0 on success with valid ip address pointed by 'ip';
+ * return -1 on failure.
+ */
+int tox_self_get_random_tcp_relay(const Tox *tox, uint8_t *ip, uint8_t *public_key);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

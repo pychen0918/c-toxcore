@@ -60,7 +60,7 @@ struct PING {
 
 int send_ping_request(PING *ping, IP_Port ipp, const uint8_t *public_key)
 {
-    uint8_t   pk[DHT_PING_SIZE];
+    ELASTOS_VLA(uint8_t, pk, DHT_PING_SIZE);
     int       rc;
     uint64_t  ping_id;
 
@@ -100,13 +100,13 @@ int send_ping_request(PING *ping, IP_Port ipp, const uint8_t *public_key)
         return 1;
     }
 
-    return sendpacket(ping->dht->net, ipp, pk, sizeof(pk));
+    return sendpacket(ping->dht->net, ipp, pk, ELASTOS_SIZEOF_VLA(pk));
 }
 
 static int send_ping_response(PING *ping, IP_Port ipp, const uint8_t *public_key, uint64_t ping_id,
                               uint8_t *shared_encryption_key)
 {
-    uint8_t   pk[DHT_PING_SIZE];
+    ELASTOS_VLA(uint8_t, pk, DHT_PING_SIZE);
     int       rc;
 
     if (id_equal(public_key, ping->dht->self_public_key)) {
@@ -131,7 +131,7 @@ static int send_ping_response(PING *ping, IP_Port ipp, const uint8_t *public_key
         return 1;
     }
 
-    return sendpacket(ping->dht->net, ipp, pk, sizeof(pk));
+    return sendpacket(ping->dht->net, ipp, pk, ELASTOS_SIZEOF_VLA(pk));
 }
 
 static int handle_ping_request(void *object, IP_Port source, const uint8_t *packet, uint16_t length, void *userdata)

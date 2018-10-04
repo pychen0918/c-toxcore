@@ -39,6 +39,80 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(ELASTOS_BUILD)
+#include <alloca.h>
+#include <arpa/inet.h>
+
+static const uint32_t _w_magic = 0x69766567; //'ELAC';
+
+static inline
+size_t ela_magic_size(void)
+{
+    return sizeof(_w_magic);
+}
+static inline
+void ela_magic_set(const uint8_t *addr)
+{
+    uint8_t *const rewind = (uint8_t *)addr - ela_magic_size();
+    *(uint32_t *)rewind = htonl(_w_magic);
+}
+static inline
+int ela_magic_check(const uint8_t *addr)
+{
+    uint8_t *const rewind = (uint8_t *)addr - ela_magic_size();
+    return ntohl(*(uint32_t *)rewind) == _w_magic;
+}
+static inline
+int ela_magic_check_unrewind(const uint8_t *addr)
+{
+    return ntohl(*(uint32_t *)addr) == _w_magic;
+}
+static inline
+const uint8_t *ela_rewind(const uint8_t *addr)
+{
+    return addr - ela_magic_size();
+}
+static inline
+size_t ela_rewind_size(size_t len)
+{
+    return len + ela_magic_size();
+}
+
+#define ela_rewind_sizeof(p)  ela_rewind_size(ELASTOS_SIZEOF_VLA(p))
+
+#define ELASTOS_VLA(type, name, size)                                   \
+    const size_t name##_size = (size) * sizeof(type) + ela_magic_size(); \
+    type *const name##_i = (type *)alloca(name##_size); \
+    type *const name = (type *)((uint8_t *)name##_i + ela_magic_size())
+#define ELASTOS_SIZEOF_VLA(name)        (name##_size - ela_magic_size())
+#else
+static inline
+size_t ela_magic_size(void)
+{
+	return 0;
+}	
+static inline
+void ela_magic_set(const uint8_t *addr)
+{
+    (void)addr;
+}
+static inline
+const uint8_t *ela_rewind(const uint8_t *addr)
+{
+    return addr;
+}
+static inline
+size_t ela_rewind_size(size_t len)
+{
+    return len;
+}
+
+#define ela_rewind_sizeof(p) SIZEOF_VLA(p)
+
+#define ELASTOS_VLA(type, name, size) VLA(type, name, size)
+#define ELASTOS_SIZEOF_VLA(name)  SIZEOF_VLA(name)
+#endif
+
 #if defined(_WIN32) || defined(__WIN32__) || defined (WIN32) /* Put win32 includes here */
 #ifndef WINVER
 //Windows XP

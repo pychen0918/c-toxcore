@@ -216,13 +216,13 @@ static int udp_handle_cookie_request(void *object, IP_Port source, const uint8_t
         return 1;
     }
 
-    uint8_t data[COOKIE_RESPONSE_LENGTH];
+    ELASTOS_VLA(uint8_t, data, COOKIE_RESPONSE_LENGTH);
 
-    if (create_cookie_response(c, data, request_plain, shared_key, dht_public_key) != sizeof(data)) {
+    if (create_cookie_response(c, data, request_plain, shared_key, dht_public_key) != ELASTOS_SIZEOF_VLA(data)) {
         return 1;
     }
 
-    if ((uint32_t)sendpacket(c->dht->net, source, data, sizeof(data)) != sizeof(data)) {
+    if ((uint32_t)sendpacket(c->dht->net, source, data, ELASTOS_SIZEOF_VLA(data)) != ELASTOS_SIZEOF_VLA(data)) {
         return 1;
     }
 
@@ -903,12 +903,12 @@ static int send_data_packet(Net_Crypto *c, int crypt_connection_id, const uint8_
     }
 
     pthread_mutex_lock(&conn->mutex);
-    VLA(uint8_t, packet, 1 + sizeof(uint16_t) + length + CRYPTO_MAC_SIZE);
+    ELASTOS_VLA(uint8_t, packet, 1 + sizeof(uint16_t) + length + CRYPTO_MAC_SIZE);
     packet[0] = NET_PACKET_CRYPTO_DATA;
     memcpy(packet + 1, conn->sent_nonce + (CRYPTO_NONCE_SIZE - sizeof(uint16_t)), sizeof(uint16_t));
     int len = encrypt_data_symmetric(conn->shared_key, conn->sent_nonce, data, length, packet + 1 + sizeof(uint16_t));
 
-    if (len + 1 + sizeof(uint16_t) != SIZEOF_VLA(packet)) {
+    if (len + 1 + sizeof(uint16_t) != ELASTOS_SIZEOF_VLA(packet)) {
         pthread_mutex_unlock(&conn->mutex);
         return -1;
     }
@@ -916,7 +916,7 @@ static int send_data_packet(Net_Crypto *c, int crypt_connection_id, const uint8_
     increment_nonce(conn->sent_nonce);
     pthread_mutex_unlock(&conn->mutex);
 
-    return send_packet_to(c, crypt_connection_id, packet, SIZEOF_VLA(packet));
+    return send_packet_to(c, crypt_connection_id, packet, ELASTOS_SIZEOF_VLA(packet));
 }
 
 /* Creates and sends a data packet with buffer_start and num to the peer using the fastest route.
@@ -1233,6 +1233,12 @@ static int clear_temp_packet(const Net_Crypto *c, int crypt_connection_id)
 static int send_temp_packet(Net_Crypto *c, int crypt_connection_id)
 {
     Crypto_Connection *conn = get_crypto_connection(c, crypt_connection_id);
+#if defined(ELASTOS_BUILD)
+    ELASTOS_VLA(uint8_t, packet, conn->temp_packet_length);
+    memcpy(packet, conn->temp_packet, conn->temp_packet_length);
+#else
+    uint8_t *packet = conn->temp_packet;
+#endif
 
     if (conn == 0) {
         return -1;
@@ -1242,7 +1248,7 @@ static int send_temp_packet(Net_Crypto *c, int crypt_connection_id)
         return -1;
     }
 
-    if (send_packet_to(c, crypt_connection_id, conn->temp_packet, conn->temp_packet_length) != 0) {
+    if (send_packet_to(c, crypt_connection_id, packet, conn->temp_packet_length) != 0) {
         return -1;
     }
 
@@ -2906,3 +2912,14 @@ void kill_net_crypto(Net_Crypto *c)
     crypto_memzero(c, sizeof(Net_Crypto));
     free(c);
 }
+
+#if defined(ELASTOS_BUILD)
+int crypto_get_random_tcp_relay_addr(Net_Crypto *c, IP_Port *ip_port, uint8_t *public_key)
+{
+    if (!c || !ip_port)
+        return -1;
+
+    return get_random_tcp_relay_addr(c->tcp_c, ip_port, public_key);
+}
+#endif
+

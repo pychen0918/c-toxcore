@@ -149,8 +149,8 @@ int send_announce_request(Networking_Core *net, const Onion_Path *path, Node_for
         return -1;
     }
 
-    uint8_t packet[ONION_MAX_PACKET_SIZE];
-    len = create_onion_packet(packet, sizeof(packet), path, dest.ip_port, request, sizeof(request));
+    ELASTOS_VLA(uint8_t, packet, ONION_MAX_PACKET_SIZE);
+    len = create_onion_packet(packet, ELASTOS_SIZEOF_VLA(packet), path, dest.ip_port, request, sizeof(request));
 
     if (len == -1) {
         return -1;
@@ -187,8 +187,8 @@ int send_data_request(Networking_Core *net, const Onion_Path *path, IP_Port dest
         return -1;
     }
 
-    uint8_t packet[ONION_MAX_PACKET_SIZE];
-    len = create_onion_packet(packet, sizeof(packet), path, dest, request, len);
+    ELASTOS_VLA(uint8_t, packet, ONION_MAX_PACKET_SIZE);
+    len = create_onion_packet(packet, ELASTOS_SIZEOF_VLA(packet), path, dest, request, len);
 
     if (len == -1) {
         return -1;

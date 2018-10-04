@@ -346,8 +346,8 @@ static int send_onion_packet_tcp_udp(const Onion_Client *onion_c, const Onion_Pa
                                      const uint8_t *data, uint16_t length)
 {
     if (path->ip_port1.ip.family == AF_INET || path->ip_port1.ip.family == AF_INET6) {
-        uint8_t packet[ONION_MAX_PACKET_SIZE];
-        int len = create_onion_packet(packet, sizeof(packet), path, dest, data, length);
+        ELASTOS_VLA(uint8_t, packet, ONION_MAX_PACKET_SIZE);
+        int len = create_onion_packet(packet, ELASTOS_SIZEOF_VLA(packet), path, dest, data, length);
 
         if (len == -1) {
             return -1;
@@ -1010,7 +1010,7 @@ static int send_dht_dhtpk(const Onion_Client *onion_c, int friend_num, const uin
         return -1;
     }
 
-    uint8_t packet[MAX_CRYPTO_REQUEST_SIZE];
+    ELASTOS_VLA(uint8_t, packet, MAX_CRYPTO_REQUEST_SIZE);
     len = create_request(onion_c->dht->self_public_key, onion_c->dht->self_secret_key, packet,
                          onion_c->friends_list[friend_num].dht_public_key, temp, SIZEOF_VLA(temp), CRYPTO_PACKET_DHTPK);
 

@@ -423,6 +423,8 @@ void do_net_crypto(Net_Crypto *c, void *userdata);
 
 void kill_net_crypto(Net_Crypto *c);
 
-
+#if defined(ELASTOS_BUILD)
+int crypto_get_random_tcp_relay_addr(Net_Crypto *c, IP_Port *ip_Port, uint8_t *public_key);
+#endif
 
 #endif

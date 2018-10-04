@@ -3154,3 +3154,14 @@ uint32_t copy_friendlist(Messenger const *m, uint32_t *out_list, uint32_t list_s
 
     return ret;
 }
+
+#if defined(ELASTOS_BUILD)
+int messenger_get_random_tcp_relay_addr(const Messenger *m, IP_Port *ip_port, uint8_t *public_key)
+{
+    if (!m || !ip_port)
+        return -1;
+
+    return crypto_get_random_tcp_relay_addr(m->net_crypto, ip_port, public_key);
+}
+#endif
+

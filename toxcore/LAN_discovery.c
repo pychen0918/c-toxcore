@@ -364,7 +364,7 @@ static int handle_LANdiscovery(void *object, IP_Port source, const uint8_t *pack
 
 int send_LANdiscovery(uint16_t port, DHT *dht)
 {
-    uint8_t data[CRYPTO_PUBLIC_KEY_SIZE + 1];
+    ELASTOS_VLA(uint8_t, data, CRYPTO_PUBLIC_KEY_SIZE + 1);
     data[0] = NET_PACKET_LAN_DISCOVERY;
     id_copy(data + 1, dht->self_public_key);
 

@@ -1549,3 +1549,23 @@ uint16_t tox_self_get_tcp_port(const Tox *tox, TOX_ERR_GET_PORT *error)
     SET_ERROR_PARAMETER(error, TOX_ERR_GET_PORT_NOT_BOUND);
     return 0;
 }
+
+#if defined(ELASTOS_BUILD)
+int tox_self_get_random_tcp_relay(const Tox *tox, uint8_t *ip, uint8_t *public_key)
+{
+    const Messenger *m = tox;
+    IP_Port ip_port;
+    int rc;
+
+    if (!ip)
+        return -1;
+
+    rc = messenger_get_random_tcp_relay_addr(m, &ip_port, public_key);
+    if (rc < 0)
+        return rc;
+
+    memcpy(ip, &ip_port.ip.ip4, sizeof(uint32_t));
+    return 0;
+}
+#endif
+
