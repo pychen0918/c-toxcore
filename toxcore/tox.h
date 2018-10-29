@@ -1771,7 +1771,46 @@ void tox_callback_friend_message(Tox *tox, tox_friend_message_cb *callback);
  *
  ******************************************************************************/
 
+typedef enum TOX_ERR_FILE_GET {
 
+    /**
+     * The function returned successfully.
+     */
+    TOX_ERR_FILE_GET_OK,
+
+    /**
+     * One of the arguments to the function was NULL when it was not expected.
+     */
+    TOX_ERR_FILE_GET_NULL,
+
+    /**
+     * The friend_number passed did not designate a valid friend.
+     */
+    TOX_ERR_FILE_GET_FRIEND_NOT_FOUND,
+
+    /**
+     * No file transfer with the given file number was found for the given friend.
+     */
+    TOX_ERR_FILE_GET_NOT_FOUND,
+
+} TOX_ERR_FILE_GET;
+
+/**
+ * Get status of a file transfer
+ * @param receive_send A number indicates transfer direction. 0 is receiver, 1 is sender.
+ * @param friend_number The friend number of the friend the file is being
+ *   transferred to or received from.
+ * @param file_number The friend-specific identifier for the file transfer.
+ * @param size The total size of the file.
+ * @param transferred The size of the file that has been transferred.
+ * @param status The transmission status. 0 == no transfer, 1 = not accepted, 2 = transferring, 3 = finished.
+ * @param paused The pause status. 0: not paused, 1 = paused by us, 2 = paused by other, 3 = paused by both.
+ * @param error The error status.
+ *
+ * @return true if correctly get status
+ * */
+bool tox_file_get_transfer_status(const Tox *tox, const uint8_t receive_send, const int32_t friendnumber, const uint8_t filenumber,
+    uint64_t *size, uint64_t *transferred, uint8_t *status, uint8_t *paused, TOX_ERR_FILE_GET *error);
 
 /**
  * Generates a cryptographic hash of the given data.
@@ -1985,29 +2024,6 @@ typedef enum TOX_ERR_FILE_SEEK {
  */
 bool tox_file_seek(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position, TOX_ERR_FILE_SEEK *error);
 
-typedef enum TOX_ERR_FILE_GET {
-
-    /**
-     * The function returned successfully.
-     */
-    TOX_ERR_FILE_GET_OK,
-
-    /**
-     * One of the arguments to the function was NULL when it was not expected.
-     */
-    TOX_ERR_FILE_GET_NULL,
-
-    /**
-     * The friend_number passed did not designate a valid friend.
-     */
-    TOX_ERR_FILE_GET_FRIEND_NOT_FOUND,
-
-    /**
-     * No file transfer with the given file number was found for the given friend.
-     */
-    TOX_ERR_FILE_GET_NOT_FOUND,
-
-} TOX_ERR_FILE_GET;
 
 
 /**
@@ -2030,8 +2046,6 @@ bool tox_file_get_file_id(const Tox *tox, uint32_t friend_number, uint32_t file_
  * :: File transmission: sending
  *
  ******************************************************************************/
-
-
 
 typedef enum TOX_ERR_FILE_SEND {
 

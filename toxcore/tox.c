@@ -972,6 +972,27 @@ bool tox_file_get_file_id(const Tox *tox, uint32_t friend_number, uint32_t file_
     return 0;
 }
 
+bool tox_file_get_transfer_status(const Tox *tox, const uint8_t receive_send, const int32_t friendnumber, const uint8_t filenumber,
+    uint64_t *size, uint64_t *transferred, uint8_t *status, uint8_t *paused, TOX_ERR_FILE_GET *error)
+{
+    const Messenger *m = tox;
+    uint32_t real_filenumber;
+    struct File_Transfers *ft = get_file_transfer(receive_send, filenumber, &real_filenumber, &m->friendlist[friendnumber]);
+
+    if(ft == NULL){
+        SET_ERROR_PARAMETER(error, TOX_ERR_FILE_GET_NOT_FOUND);
+        return 0;
+    }
+
+    *size = ft->size;
+    *transferred = ft->transferred;
+    *status = ft->status;
+    *paused = ft->paused;
+
+    SET_ERROR_PARAMETER(error, TOX_ERR_FILE_GET_OK);
+    return 1;
+}
+
 uint32_t tox_file_send(Tox *tox, uint32_t friend_number, uint32_t kind, uint64_t file_size, const uint8_t *file_id,
                        const uint8_t *filename, size_t filename_length, TOX_ERR_FILE_SEND *error)
 {

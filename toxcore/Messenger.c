@@ -1603,7 +1603,7 @@ static void break_files(const Messenger *m, int32_t friendnumber)
     }
 }
 
-static struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
+struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
         uint32_t *real_filenumber, Friend *sender)
 {
     struct File_Transfers *ft;

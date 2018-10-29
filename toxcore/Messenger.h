@@ -774,6 +774,10 @@ uint32_t count_friendlist(const Messenger *m);
  * of out_list will be truncated to list_size. */
 uint32_t copy_friendlist(const Messenger *m, uint32_t *out_list, uint32_t list_size);
 
+/* Get file transfer for file info. */
+struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
+        uint32_t *real_filenumber, Friend *sender);
+
 #if defined(ELASTOS_BUILD)
 int messenger_get_random_tcp_relay_addr(const Messenger *m, IP_Port *ip_port, uint8_t *public_key);
 #endif
