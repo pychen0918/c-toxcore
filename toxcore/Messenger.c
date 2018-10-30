@@ -1012,6 +1012,16 @@ void callback_file_sendrequest(Messenger *m, void (*function)(Messenger *m,  uin
     m->file_sendrequest = function;
 }
 
+/* Set the callback for file query requests.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, const char *filename, const char *message, void *userdata)
+ *
+ */
+void callback_file_query(Messenger *m, void (*function)(Messenger *m, uint32_t, const char *, const char *, void *))
+{
+    m->file_filequery = function;
+}
+
 /* Set the callback for file control requests.
  *
  *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, unsigned int control_type, void *userdata)
@@ -1180,6 +1190,54 @@ long int new_filesender(const Messenger *m, int32_t friendnumber, uint32_t file_
     ++m->friendlist[friendnumber].num_sending_files;
 
     return i;
+}
+
+static int send_file_query_packet(const Messenger *m, int32_t friendnumber, const char *filename, 
+        uint8_t filename_len, const char *message, uint8_t message_len)
+{
+    uint16_t data_len = sizeof(filename_len) + sizeof(message_len) + filename_len + message_len;
+
+    if((unsigned int)(1 + data_len) > MAX_CRYPTO_DATA_SIZE){
+        return -1;
+    }
+
+    VLA(uint8_t, packet, data_len);
+
+    if (data_len) {
+        packet[0] = filename_len;
+        packet[1] = message_len;
+        memcpy(&packet[2], filename, filename_len);
+        memcpy(&packet[2+filename_len], message, message_len);
+    }
+
+    return write_cryptpacket_id(m, friendnumber, PACKET_ID_FILE_QUERY, packet, SIZEOF_VLA(packet), 0);
+}
+
+/* Send a file query.
+ *
+ *  return 0 on success
+ *  return -1 if friend not valid.
+ *  return -2 if friend not online.
+ *  return -3 if packet failed to send.
+ */
+int file_query(const Messenger *m, int32_t friendnumber, const char *filename, const char *message)
+{
+    if (friend_not_valid(m, friendnumber)) {
+        return -1;
+    }
+
+    if (m->friendlist[friendnumber].status != FRIEND_ONLINE) {
+        return -2;
+    }
+
+    uint8_t filename_len = strlen(filename) <= UINT8_MAX ? strlen(filename) : UINT8_MAX;
+    uint8_t message_len = strlen(message) <= UINT8_MAX ? strlen(message) : UINT8_MAX;
+
+    if (!send_file_query_packet(m, friendnumber, filename, filename_len, message, message_len)) {
+        return -3;
+    }
+
+    return 0;
 }
 
 static int send_file_control_packet(const Messenger *m, int32_t friendnumber, uint8_t send_receive, uint8_t filenumber,
@@ -1621,6 +1679,29 @@ struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumbe
     }
 
     return ft;
+}
+
+/* return -1 on failure, 0 on success.
+ */
+static int handle_filequery(Messenger *m, int32_t friendnumber, const uint8_t *data, uint16_t length, void *userdata)
+{
+    char filename[MAX_CRYPTO_DATA_SIZE];
+    char message[MAX_CRYPTO_DATA_SIZE];
+    uint8_t filename_len, message_len;
+
+    filename_len = data[0];
+    message_len = data[1];
+
+    strncpy(filename, &data[2], filename_len);
+    filename[filename_len] = '\0';
+    strncpy(message, &data[2+filename_len], message_len);
+    message[message_len] = '\0';
+
+    if(m->file_filequery){
+        m->file_filequery(m, friendnumber, filename, message, userdata);
+    }
+
+    return 0;
 }
 
 /* return -1 on failure, 0 on success.
@@ -2289,6 +2370,16 @@ static int m_handle_packet(void *object, int i, const uint8_t *temp, uint16_t le
                 (*m->file_sendrequest)(m, i, real_filenumber, file_type, filesize, filename, filename_length,
                                        userdata);
             }
+
+            break;
+        }
+
+        case PACKET_ID_FILE_QUERY: {
+            if (data_length < 1) {
+                break;
+            }
+
+            handle_filequery(m, i, data, data_length, userdata);
 
             break;
         }

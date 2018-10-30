@@ -850,6 +850,39 @@ bool tox_hash(uint8_t *hash, const uint8_t *data, size_t length)
     return 1;
 }
 
+bool tox_file_query(Tox *tox, uint32_t friend_number, const char *filename, const char *message, TOX_ERR_FILE_QUERY *error)
+{
+    Messenger *m = tox;
+    int ret = file_query(m, friend_number, filename, message);
+
+    if (ret == 0) {
+        SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_OK);
+        return 1;
+    }
+
+    switch (ret) {
+        case -1:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_FRIEND_NOT_FOUND);
+            return 0;
+
+        case -2:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_FRIEND_NOT_CONNECTED);
+            return 0;
+
+        case -3:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_SENDQ);
+            return 0;
+    }
+
+    return 0;
+}
+
+void tox_callback_file_recv_query(Tox *tox, tox_file_recv_query_cb *callback)
+{
+    Messenger *m = tox;
+    callback_file_query(m, (void (*)(Messenger *, uint32_t, const char *, const char *, void *))callback);
+}
+
 bool tox_file_control(Tox *tox, uint32_t friend_number, uint32_t file_number, TOX_FILE_CONTROL control,
                       TOX_ERR_FILE_CONTROL *error)
 {

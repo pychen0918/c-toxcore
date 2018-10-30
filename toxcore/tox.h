@@ -1891,6 +1891,31 @@ typedef enum TOX_FILE_CONTROL {
 } TOX_FILE_CONTROL;
 
 
+typedef enum TOX_ERR_FILE_QUERY {
+
+    /**
+     * The function returned successfully.
+     */
+    TOX_ERR_FILE_QUERY_OK,
+
+    /**
+     * The friend_number passed did not designate a valid friend.
+     */
+    TOX_ERR_FILE_QUERY_FRIEND_NOT_FOUND,
+
+    /**
+     * This client is currently not connected to the friend.
+     */
+    TOX_ERR_FILE_QUERY_FRIEND_NOT_CONNECTED,
+
+    /**
+     * Packet queue is full.
+     */
+    TOX_ERR_FILE_QUERY_SENDQ,
+
+} TOX_ERR_FILE_QUERY;
+
+
 typedef enum TOX_ERR_FILE_CONTROL {
 
     /**
@@ -1936,6 +1961,37 @@ typedef enum TOX_ERR_FILE_CONTROL {
 
 } TOX_ERR_FILE_CONTROL;
 
+/**
+ * Sends a file query command to a friend for a given file name.
+ *
+ * @param friend_number The friend number of the friend the file is being
+ *   asked from.
+ * @param filename The name of the file we are asking for.
+ * @param message Extra message.
+ *
+ * @return true on success.
+ */
+bool tox_file_query(Tox *tox, uint32_t friend_number, const char *filename, const char *message,
+                    TOX_ERR_FILE_QUERY *error);
+
+/**
+ * When receiving TOX_FILE_CONTROL_CANCEL, the client should release the
+ * resources associated with the file number and consider the transfer failed.
+ *
+ * @param friend_number The friend number of the friend who is querying the file.
+ * @param filename The name of the file that is being queried for.
+ * @param message Extra message sent by the friend.
+ */
+typedef void tox_file_recv_query_cb(Tox *tox, uint32_t friend_number, const char *filename, const char *message,
+                                    void *user_data);
+
+/**
+ * Set the callback for the `file_recv_query` event. Pass NULL to unset.
+ *
+ * This event is triggered when a file query command is received from a
+ * friend.
+ */
+void tox_callback_file_recv_query(Tox *tox, tox_file_recv_query_cb *callback);
 
 /**
  * Sends a file control command to a friend for a given file transfer.
@@ -1961,7 +2017,6 @@ bool tox_file_control(Tox *tox, uint32_t friend_number, uint32_t file_number, TO
  */
 typedef void tox_file_recv_control_cb(Tox *tox, uint32_t friend_number, uint32_t file_number, TOX_FILE_CONTROL control,
                                       void *user_data);
-
 
 /**
  * Set the callback for the `file_recv_control` event. Pass NULL to unset.

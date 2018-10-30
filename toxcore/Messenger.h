@@ -58,6 +58,7 @@ enum {
 #define PACKET_ID_FILE_SENDREQUEST 80
 #define PACKET_ID_FILE_CONTROL 81
 #define PACKET_ID_FILE_DATA 82
+#define PACKET_ID_FILE_QUERY 83
 #define PACKET_ID_INVITE_CONFERENCE 96
 #define PACKET_ID_ONLINE_PACKET 97
 #define PACKET_ID_DIRECT_CONFERENCE 98
@@ -260,6 +261,7 @@ struct Messenger {
 
     void (*file_sendrequest)(struct Messenger *m, uint32_t, uint32_t, uint32_t, uint64_t, const uint8_t *, size_t,
                              void *);
+    void (*file_filequery)(struct Messenger *m, uint32_t, const char*, const char*, void *);
     void (*file_filecontrol)(struct Messenger *m, uint32_t, uint32_t, unsigned int, void *);
     void (*file_filedata)(struct Messenger *m, uint32_t, uint32_t, uint64_t, const uint8_t *, size_t, void *);
     void (*file_reqchunk)(struct Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *);
@@ -564,6 +566,12 @@ int send_conference_invite_packet(const Messenger *m, int32_t friendnumber, cons
 void callback_file_sendrequest(Messenger *m, void (*function)(Messenger *m,  uint32_t, uint32_t, uint32_t, uint64_t,
                                const uint8_t *, size_t, void *));
 
+/* Set the callback for file query requests.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, const char *filename, const char *message, void *userdata)
+ *
+ */
+void callback_file_query(Messenger *m, void (*function)(Messenger *m, uint32_t, const char *, const char *, void *));
 
 /* Set the callback for file control requests.
  *
@@ -607,6 +615,15 @@ int file_get_id(const Messenger *m, int32_t friendnumber, uint32_t filenumber, u
  */
 long int new_filesender(const Messenger *m, int32_t friendnumber, uint32_t file_type, uint64_t filesize,
                         const uint8_t *file_id, const uint8_t *filename, uint16_t filename_length);
+
+/* Send a file query.
+ *
+ *  return 0 on success
+ *  return -1 if friend not valid.
+ *  return -2 if friend not online.
+ *  return -3 if packet failed to send.
+ */
+int file_query(const Messenger *m, int32_t friendnumber, const char *filename, const char *message);
 
 /* Send a file control request.
  *
