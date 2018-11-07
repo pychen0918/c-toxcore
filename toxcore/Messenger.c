@@ -915,7 +915,7 @@ static void check_friend_tcp_udp(Messenger *m, int32_t friendnumber, void *userd
     m->friendlist[friendnumber].last_connection_udp_tcp = ret;
 }
 
-static void break_files(const Messenger *m, int32_t friendnumber);
+static void break_files(Messenger *m, int32_t friendnumber, void *userdata);
 static void check_friend_connectionstatus(Messenger *m, int32_t friendnumber, uint8_t status, void *userdata)
 {
     if (status == NOFRIEND) {
@@ -927,7 +927,7 @@ static void check_friend_connectionstatus(Messenger *m, int32_t friendnumber, ui
 
     if (is_online != was_online) {
         if (was_online) {
-            break_files(m, friendnumber);
+            break_files(m, friendnumber, userdata);
             clear_receipts(m, friendnumber);
         } else {
             m->friendlist[friendnumber].name_sent = 0;
@@ -1051,6 +1051,16 @@ void callback_file_data(Messenger *m, void (*function)(Messenger *m, uint32_t, u
 void callback_file_reqchunk(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *))
 {
     m->file_reqchunk = function;
+}
+
+/* Set the callback when file get abort.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, const uint8_t *file_id, size_t length, void *userdata);
+ *
+ */
+void callback_file_abort(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *))
+{
+    m->file_abort = function;
 }
 
 #define MAX_FILENAME_LENGTH 255
@@ -1645,18 +1655,29 @@ static void do_reqchunk_filecb(Messenger *m, int32_t friendnumber, void *userdat
 /* Run this when the friend disconnects.
  *  Kill all current file transfers.
  */
-static void break_files(const Messenger *m, int32_t friendnumber)
+static void break_files(Messenger *m, int32_t friendnumber, void *userdata)
 {
     uint32_t i;
 
-    // TODO(irungentoo): Inform the client which file transfers get killed with a callback?
     for (i = 0; i < MAX_CONCURRENT_FILE_PIPES; ++i) {
         if (m->friendlist[friendnumber].file_sending[i].status != FILESTATUS_NONE) {
             m->friendlist[friendnumber].file_sending[i].status = FILESTATUS_NONE;
+            if(m->file_abort){
+                m->file_abort(m, friendnumber, i, 
+                        m->friendlist[friendnumber].file_sending[i].id, 
+                        m->friendlist[friendnumber].file_sending[i].transferred,
+                        userdata);
+            }
         }
 
         if (m->friendlist[friendnumber].file_receiving[i].status != FILESTATUS_NONE) {
             m->friendlist[friendnumber].file_receiving[i].status = FILESTATUS_NONE;
+            if(m->file_abort){
+                m->file_abort(m, friendnumber, (i + 1) << 16, 
+                        m->friendlist[friendnumber].file_receiving[i].id, 
+                        m->friendlist[friendnumber].file_receiving[i].transferred,
+                        userdata);
+            }
         }
     }
 }

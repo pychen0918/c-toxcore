@@ -2371,6 +2371,32 @@ typedef void tox_file_recv_chunk_cb(Tox *tox, uint32_t friend_number, uint32_t f
  */
 void tox_callback_file_recv_chunk(Tox *tox, tox_file_recv_chunk_cb *callback);
 
+/**
+ * The callback when file transmission is aborted. This is usually caused by the 
+ * disconnection of the friend.
+ *
+ * For the sender, length is the size of data sent. For receiver, length is the size 
+ * of data received. Length might be inconsist between sender and receiver as sender 
+ * will keep sending data even if the receiver didn't respond.
+ *
+ * @param friend_number The friend number of the friend who is disconnected.
+ * @param file_number The friend-specific file number the data transmission is
+ *   associated with.
+ * @param file_id The file key associated with the transmission.
+ * @param length The length of the transmitted data.
+ */
+typedef void tox_file_abort_cb(Tox *tox, uint32_t friend_number, uint32_t file_number, const uint8_t *file_id,
+                               size_t length, void *user_data);
+
+
+/**
+ * Set the callback for the `file_abort` event. Pass NULL to unset.
+ *
+ * This event is first triggered when a file transfer is abort due to the disconnection
+ * of the friend.
+ */
+void tox_callback_file_abort(Tox *tox, tox_file_abort_cb *callback);
+
 
 /*******************************************************************************
  *

@@ -265,6 +265,7 @@ struct Messenger {
     void (*file_filecontrol)(struct Messenger *m, uint32_t, uint32_t, unsigned int, void *);
     void (*file_filedata)(struct Messenger *m, uint32_t, uint32_t, uint64_t, const uint8_t *, size_t, void *);
     void (*file_reqchunk)(struct Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *);
+    void (*file_abort)(struct Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *);
 
     void (*msi_packet)(struct Messenger *m, uint32_t, const uint8_t *, uint16_t, void *);
     void *msi_packet_userdata;
@@ -595,6 +596,12 @@ void callback_file_data(Messenger *m, void (*function)(Messenger *m, uint32_t, u
  */
 void callback_file_reqchunk(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *));
 
+/* Set the callback when file get abort.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, const uint8_t *fileid, size_t length, void *userdata);
+ *
+ */
+void callback_file_abort(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *));
 
 /* Copy the file transfer file id to file_id
  *

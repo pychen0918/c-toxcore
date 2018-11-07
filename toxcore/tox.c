@@ -1135,6 +1135,12 @@ void tox_callback_file_recv_chunk(Tox *tox, tox_file_recv_chunk_cb *callback)
     callback_file_data(m, callback);
 }
 
+void tox_callback_file_abort(Tox *tox, tox_file_abort_cb *callback)
+{
+    Messenger *m = tox;
+    callback_file_abort(m, callback);
+}
+
 void tox_callback_conference_invite(Tox *tox, tox_conference_invite_cb *callback)
 {
     Messenger *m = tox;
