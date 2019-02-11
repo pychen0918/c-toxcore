@@ -21,6 +21,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef TOX_H
 #define TOX_H
 
@@ -1771,7 +1790,46 @@ void tox_callback_friend_message(Tox *tox, tox_friend_message_cb *callback);
  *
  ******************************************************************************/
 
+typedef enum TOX_ERR_FILE_GET {
 
+    /**
+     * The function returned successfully.
+     */
+    TOX_ERR_FILE_GET_OK,
+
+    /**
+     * One of the arguments to the function was NULL when it was not expected.
+     */
+    TOX_ERR_FILE_GET_NULL,
+
+    /**
+     * The friend_number passed did not designate a valid friend.
+     */
+    TOX_ERR_FILE_GET_FRIEND_NOT_FOUND,
+
+    /**
+     * No file transfer with the given file number was found for the given friend.
+     */
+    TOX_ERR_FILE_GET_NOT_FOUND,
+
+} TOX_ERR_FILE_GET;
+
+/**
+ * Get status of a file transfer
+ * @param receive_send A number indicates transfer direction. 0 is receiver, 1 is sender.
+ * @param friend_number The friend number of the friend the file is being
+ *   transferred to or received from.
+ * @param file_number The friend-specific identifier for the file transfer.
+ * @param size The total size of the file.
+ * @param transferred The size of the file that has been transferred.
+ * @param status The transmission status. 0 == no transfer, 1 = not accepted, 2 = transferring, 3 = finished.
+ * @param paused The pause status. 0: not paused, 1 = paused by us, 2 = paused by other, 3 = paused by both.
+ * @param error The error status.
+ *
+ * @return true if correctly get status
+ * */
+bool tox_file_get_transfer_status(const Tox *tox, const uint8_t receive_send, const int32_t friendnumber, const uint8_t filenumber,
+    uint64_t *size, uint64_t *transferred, uint8_t *status, uint8_t *paused, TOX_ERR_FILE_GET *error);
 
 /**
  * Generates a cryptographic hash of the given data.
@@ -1852,6 +1910,31 @@ typedef enum TOX_FILE_CONTROL {
 } TOX_FILE_CONTROL;
 
 
+typedef enum TOX_ERR_FILE_QUERY {
+
+    /**
+     * The function returned successfully.
+     */
+    TOX_ERR_FILE_QUERY_OK,
+
+    /**
+     * The friend_number passed did not designate a valid friend.
+     */
+    TOX_ERR_FILE_QUERY_FRIEND_NOT_FOUND,
+
+    /**
+     * This client is currently not connected to the friend.
+     */
+    TOX_ERR_FILE_QUERY_FRIEND_NOT_CONNECTED,
+
+    /**
+     * Packet queue is full.
+     */
+    TOX_ERR_FILE_QUERY_SENDQ,
+
+} TOX_ERR_FILE_QUERY;
+
+
 typedef enum TOX_ERR_FILE_CONTROL {
 
     /**
@@ -1897,6 +1980,37 @@ typedef enum TOX_ERR_FILE_CONTROL {
 
 } TOX_ERR_FILE_CONTROL;
 
+/**
+ * Sends a file query command to a friend for a given file name.
+ *
+ * @param friend_number The friend number of the friend the file is being
+ *   asked from.
+ * @param filename The name of the file we are asking for.
+ * @param message Extra message.
+ *
+ * @return true on success.
+ */
+bool tox_file_query(Tox *tox, uint32_t friend_number, const char *filename, const char *message,
+                    TOX_ERR_FILE_QUERY *error);
+
+/**
+ * When receiving TOX_FILE_CONTROL_CANCEL, the client should release the
+ * resources associated with the file number and consider the transfer failed.
+ *
+ * @param friend_number The friend number of the friend who is querying the file.
+ * @param filename The name of the file that is being queried for.
+ * @param message Extra message sent by the friend.
+ */
+typedef void tox_file_recv_query_cb(Tox *tox, uint32_t friend_number, const char *filename, const char *message,
+                                    void *user_data);
+
+/**
+ * Set the callback for the `file_recv_query` event. Pass NULL to unset.
+ *
+ * This event is triggered when a file query command is received from a
+ * friend.
+ */
+void tox_callback_file_recv_query(Tox *tox, tox_file_recv_query_cb *callback);
 
 /**
  * Sends a file control command to a friend for a given file transfer.
@@ -1922,7 +2036,6 @@ bool tox_file_control(Tox *tox, uint32_t friend_number, uint32_t file_number, TO
  */
 typedef void tox_file_recv_control_cb(Tox *tox, uint32_t friend_number, uint32_t file_number, TOX_FILE_CONTROL control,
                                       void *user_data);
-
 
 /**
  * Set the callback for the `file_recv_control` event. Pass NULL to unset.
@@ -1985,29 +2098,6 @@ typedef enum TOX_ERR_FILE_SEEK {
  */
 bool tox_file_seek(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position, TOX_ERR_FILE_SEEK *error);
 
-typedef enum TOX_ERR_FILE_GET {
-
-    /**
-     * The function returned successfully.
-     */
-    TOX_ERR_FILE_GET_OK,
-
-    /**
-     * One of the arguments to the function was NULL when it was not expected.
-     */
-    TOX_ERR_FILE_GET_NULL,
-
-    /**
-     * The friend_number passed did not designate a valid friend.
-     */
-    TOX_ERR_FILE_GET_FRIEND_NOT_FOUND,
-
-    /**
-     * No file transfer with the given file number was found for the given friend.
-     */
-    TOX_ERR_FILE_GET_NOT_FOUND,
-
-} TOX_ERR_FILE_GET;
 
 
 /**
@@ -2030,8 +2120,6 @@ bool tox_file_get_file_id(const Tox *tox, uint32_t friend_number, uint32_t file_
  * :: File transmission: sending
  *
  ******************************************************************************/
-
-
 
 typedef enum TOX_ERR_FILE_SEND {
 
@@ -2301,6 +2389,32 @@ typedef void tox_file_recv_chunk_cb(Tox *tox, uint32_t friend_number, uint32_t f
  * subsequently when a chunk of file data for an accepted request was received.
  */
 void tox_callback_file_recv_chunk(Tox *tox, tox_file_recv_chunk_cb *callback);
+
+/**
+ * The callback when file transmission is aborted. This is usually caused by the 
+ * disconnection of the friend.
+ *
+ * For the sender, length is the size of data sent. For receiver, length is the size 
+ * of data received. Length might be inconsist between sender and receiver as sender 
+ * will keep sending data even if the receiver didn't respond.
+ *
+ * @param friend_number The friend number of the friend who is disconnected.
+ * @param file_number The friend-specific file number the data transmission is
+ *   associated with.
+ * @param file_id The file key associated with the transmission.
+ * @param length The length of the transmitted data.
+ */
+typedef void tox_file_abort_cb(Tox *tox, uint32_t friend_number, uint32_t file_number, const uint8_t *file_id,
+                               size_t length, void *user_data);
+
+
+/**
+ * Set the callback for the `file_abort` event. Pass NULL to unset.
+ *
+ * This event is first triggered when a file transfer is abort due to the disconnection
+ * of the friend.
+ */
+void tox_callback_file_abort(Tox *tox, tox_file_abort_cb *callback);
 
 
 /*******************************************************************************
@@ -2939,6 +3053,18 @@ uint16_t tox_self_get_udp_port(const Tox *tox, TOX_ERR_GET_PORT *error);
  * the instance is acting as a TCP relay.
  */
 uint16_t tox_self_get_tcp_port(const Tox *tox, TOX_ERR_GET_PORT *error);
+
+#if defined(ELASTOS_BUILD)
+/* Return a random TCP relay address for use as address of turn server.
+ *
+ * As to be sure, application need to call this function more than or
+ * at least 5 times on failure.
+ *
+ * return 0 on success with valid ip address pointed by 'ip';
+ * return -1 on failure.
+ */
+int tox_self_get_random_tcp_relay(const Tox *tox, uint8_t *ip, uint8_t *public_key);
+#endif
 
 #ifdef __cplusplus
 }

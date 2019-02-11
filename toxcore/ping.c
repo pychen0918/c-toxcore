@@ -23,6 +23,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -60,7 +79,7 @@ struct PING {
 
 int send_ping_request(PING *ping, IP_Port ipp, const uint8_t *public_key)
 {
-    uint8_t   pk[DHT_PING_SIZE];
+    ELASTOS_VLA(uint8_t, pk, DHT_PING_SIZE);
     int       rc;
     uint64_t  ping_id;
 
@@ -100,13 +119,13 @@ int send_ping_request(PING *ping, IP_Port ipp, const uint8_t *public_key)
         return 1;
     }
 
-    return sendpacket(ping->dht->net, ipp, pk, sizeof(pk));
+    return sendpacket(ping->dht->net, ipp, pk, ELASTOS_SIZEOF_VLA(pk));
 }
 
 static int send_ping_response(PING *ping, IP_Port ipp, const uint8_t *public_key, uint64_t ping_id,
                               uint8_t *shared_encryption_key)
 {
-    uint8_t   pk[DHT_PING_SIZE];
+    ELASTOS_VLA(uint8_t, pk, DHT_PING_SIZE);
     int       rc;
 
     if (id_equal(public_key, ping->dht->self_public_key)) {
@@ -131,7 +150,7 @@ static int send_ping_response(PING *ping, IP_Port ipp, const uint8_t *public_key
         return 1;
     }
 
-    return sendpacket(ping->dht->net, ipp, pk, sizeof(pk));
+    return sendpacket(ping->dht->net, ipp, pk, ELASTOS_SIZEOF_VLA(pk));
 }
 
 static int handle_ping_request(void *object, IP_Port source, const uint8_t *packet, uint16_t length, void *userdata)

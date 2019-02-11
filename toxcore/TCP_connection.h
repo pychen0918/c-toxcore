@@ -21,6 +21,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifndef TCP_CONNECTION_H
 #define TCP_CONNECTION_H
 
@@ -218,6 +237,10 @@ TCP_Connections *new_tcp_connections(const uint8_t *secret_key, TCP_Proxy_Info *
 
 void do_tcp_connections(TCP_Connections *tcp_c, void *userdata);
 void kill_tcp_connections(TCP_Connections *tcp_c);
+
+#if defined(ELASTOS_BUILD)
+int get_random_tcp_relay_addr(TCP_Connections *tcp_c, IP_Port *ip_port, uint8_t *public_key);
+#endif
 
 #endif
 

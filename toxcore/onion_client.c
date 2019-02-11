@@ -22,6 +22,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -346,8 +365,8 @@ static int send_onion_packet_tcp_udp(const Onion_Client *onion_c, const Onion_Pa
                                      const uint8_t *data, uint16_t length)
 {
     if (path->ip_port1.ip.family == AF_INET || path->ip_port1.ip.family == AF_INET6) {
-        uint8_t packet[ONION_MAX_PACKET_SIZE];
-        int len = create_onion_packet(packet, sizeof(packet), path, dest, data, length);
+        ELASTOS_VLA(uint8_t, packet, ONION_MAX_PACKET_SIZE);
+        int len = create_onion_packet(packet, ELASTOS_SIZEOF_VLA(packet), path, dest, data, length);
 
         if (len == -1) {
             return -1;
@@ -1010,7 +1029,7 @@ static int send_dht_dhtpk(const Onion_Client *onion_c, int friend_num, const uin
         return -1;
     }
 
-    uint8_t packet[MAX_CRYPTO_REQUEST_SIZE];
+    ELASTOS_VLA(uint8_t, packet, MAX_CRYPTO_REQUEST_SIZE);
     len = create_request(onion_c->dht->self_public_key, onion_c->dht->self_secret_key, packet,
                          onion_c->friends_list[friend_num].dht_public_key, temp, SIZEOF_VLA(temp), CRYPTO_PACKET_DHTPK);
 

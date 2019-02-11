@@ -22,6 +22,26 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifndef MESSENGER_H
 #define MESSENGER_H
 
@@ -58,6 +78,7 @@ enum {
 #define PACKET_ID_FILE_SENDREQUEST 80
 #define PACKET_ID_FILE_CONTROL 81
 #define PACKET_ID_FILE_DATA 82
+#define PACKET_ID_FILE_QUERY 83
 #define PACKET_ID_INVITE_CONFERENCE 96
 #define PACKET_ID_ONLINE_PACKET 97
 #define PACKET_ID_DIRECT_CONFERENCE 98
@@ -260,9 +281,11 @@ struct Messenger {
 
     void (*file_sendrequest)(struct Messenger *m, uint32_t, uint32_t, uint32_t, uint64_t, const uint8_t *, size_t,
                              void *);
+    void (*file_filequery)(struct Messenger *m, uint32_t, const char*, const char*, void *);
     void (*file_filecontrol)(struct Messenger *m, uint32_t, uint32_t, unsigned int, void *);
     void (*file_filedata)(struct Messenger *m, uint32_t, uint32_t, uint64_t, const uint8_t *, size_t, void *);
     void (*file_reqchunk)(struct Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *);
+    void (*file_abort)(struct Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *);
 
     void (*msi_packet)(struct Messenger *m, uint32_t, const uint8_t *, uint16_t, void *);
     void *msi_packet_userdata;
@@ -564,6 +587,12 @@ int send_conference_invite_packet(const Messenger *m, int32_t friendnumber, cons
 void callback_file_sendrequest(Messenger *m, void (*function)(Messenger *m,  uint32_t, uint32_t, uint32_t, uint64_t,
                                const uint8_t *, size_t, void *));
 
+/* Set the callback for file query requests.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, const char *filename, const char *message, void *userdata)
+ *
+ */
+void callback_file_query(Messenger *m, void (*function)(Messenger *m, uint32_t, const char *, const char *, void *));
 
 /* Set the callback for file control requests.
  *
@@ -587,6 +616,12 @@ void callback_file_data(Messenger *m, void (*function)(Messenger *m, uint32_t, u
  */
 void callback_file_reqchunk(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *));
 
+/* Set the callback when file get abort.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, const uint8_t *fileid, size_t length, void *userdata);
+ *
+ */
+void callback_file_abort(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *));
 
 /* Copy the file transfer file id to file_id
  *
@@ -607,6 +642,15 @@ int file_get_id(const Messenger *m, int32_t friendnumber, uint32_t filenumber, u
  */
 long int new_filesender(const Messenger *m, int32_t friendnumber, uint32_t file_type, uint64_t filesize,
                         const uint8_t *file_id, const uint8_t *filename, uint16_t filename_length);
+
+/* Send a file query.
+ *
+ *  return 0 on success
+ *  return -1 if friend not valid.
+ *  return -2 if friend not online.
+ *  return -3 if packet failed to send.
+ */
+int file_query(const Messenger *m, int32_t friendnumber, const char *filename, const char *message);
 
 /* Send a file control request.
  *
@@ -773,5 +817,13 @@ uint32_t count_friendlist(const Messenger *m);
  * If the array was too small, the contents
  * of out_list will be truncated to list_size. */
 uint32_t copy_friendlist(const Messenger *m, uint32_t *out_list, uint32_t list_size);
+
+/* Get file transfer for file info. */
+struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
+        uint32_t *real_filenumber, Friend *sender);
+
+#if defined(ELASTOS_BUILD)
+int messenger_get_random_tcp_relay_addr(const Messenger *m, IP_Port *ip_port, uint8_t *public_key);
+#endif
 
 #endif

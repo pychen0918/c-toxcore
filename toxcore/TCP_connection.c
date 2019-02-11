@@ -21,6 +21,26 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -1489,3 +1509,58 @@ void kill_tcp_connections(TCP_Connections *tcp_c)
     free(tcp_c->connections);
     free(tcp_c);
 }
+
+#if defined(ELASTOS_BUILD)
+int get_random_tcp_relay_addr(TCP_Connections *tcp_c, IP_Port *ip_port, uint8_t *public_key)
+{
+    int i, r = rand();
+    int nconnections = 0;
+    int nsleeps = 0;
+    int index;
+
+    if (!tcp_c || !ip_port)
+        return -1;
+
+    for (i = 0; i < tcp_c->tcp_connections_length; i++) {
+        if (tcp_c->tcp_connections[i].status == TCP_CONN_CONNECTED)
+            ++nconnections;
+        else if (tcp_c->tcp_connections[i].status == TCP_CONN_SLEEPING)
+            ++nsleeps;
+    }
+
+    if (nconnections == 0 && nsleeps == 0)
+        return -2;
+
+    if (nconnections > 0) {
+        index = (tcp_c->tcp_connections_length + r) % nconnections;
+
+        for (i = 0; i < tcp_c->tcp_connections_length; i++) {
+            if (tcp_c->tcp_connections[i].status == TCP_CONN_CONNECTED) {
+                if (index == 0) {
+                    memcpy(public_key, tcp_c->tcp_connections[i].connection->public_key, CRYPTO_PUBLIC_KEY_SIZE);
+                    *ip_port = tcp_c->tcp_connections[i].connection->ip_port;
+                    return 0;
+                }
+                --index;
+            }
+        }
+    }
+
+    if (nsleeps > 0) {
+        index = (tcp_c->tcp_connections_length + r) % nsleeps;
+        for (i = 0; i < tcp_c->tcp_connections_length; i++) {
+            if (tcp_c->tcp_connections[i].status == TCP_CONN_SLEEPING) {
+                if (index == 0) {
+                    memcpy(public_key, tcp_c->tcp_connections[i].relay_pk, CRYPTO_PUBLIC_KEY_SIZE);
+                    *ip_port = tcp_c->tcp_connections[i].ip_port;
+                    return 0;
+                }
+                --index;
+            }
+        }
+    }
+
+    return -3;
+}
+#endif
+

@@ -21,6 +21,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -850,6 +869,39 @@ bool tox_hash(uint8_t *hash, const uint8_t *data, size_t length)
     return 1;
 }
 
+bool tox_file_query(Tox *tox, uint32_t friend_number, const char *filename, const char *message, TOX_ERR_FILE_QUERY *error)
+{
+    Messenger *m = tox;
+    int ret = file_query(m, friend_number, filename, message);
+
+    if (ret == 0) {
+        SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_OK);
+        return 1;
+    }
+
+    switch (ret) {
+        case -1:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_FRIEND_NOT_FOUND);
+            return 0;
+
+        case -2:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_FRIEND_NOT_CONNECTED);
+            return 0;
+
+        case -3:
+            SET_ERROR_PARAMETER(error, TOX_ERR_FILE_QUERY_SENDQ);
+            return 0;
+    }
+
+    return 0;
+}
+
+void tox_callback_file_recv_query(Tox *tox, tox_file_recv_query_cb *callback)
+{
+    Messenger *m = tox;
+    callback_file_query(m, (void (*)(Messenger *, uint32_t, const char *, const char *, void *))callback);
+}
+
 bool tox_file_control(Tox *tox, uint32_t friend_number, uint32_t file_number, TOX_FILE_CONTROL control,
                       TOX_ERR_FILE_CONTROL *error)
 {
@@ -972,6 +1024,27 @@ bool tox_file_get_file_id(const Tox *tox, uint32_t friend_number, uint32_t file_
     return 0;
 }
 
+bool tox_file_get_transfer_status(const Tox *tox, const uint8_t receive_send, const int32_t friendnumber, const uint8_t filenumber,
+    uint64_t *size, uint64_t *transferred, uint8_t *status, uint8_t *paused, TOX_ERR_FILE_GET *error)
+{
+    const Messenger *m = tox;
+    uint32_t real_filenumber;
+    struct File_Transfers *ft = get_file_transfer(receive_send, filenumber, &real_filenumber, &m->friendlist[friendnumber]);
+
+    if(ft == NULL){
+        SET_ERROR_PARAMETER(error, TOX_ERR_FILE_GET_NOT_FOUND);
+        return 0;
+    }
+
+    *size = ft->size;
+    *transferred = ft->transferred;
+    *status = ft->status;
+    *paused = ft->paused;
+
+    SET_ERROR_PARAMETER(error, TOX_ERR_FILE_GET_OK);
+    return 1;
+}
+
 uint32_t tox_file_send(Tox *tox, uint32_t friend_number, uint32_t kind, uint64_t file_size, const uint8_t *file_id,
                        const uint8_t *filename, size_t filename_length, TOX_ERR_FILE_SEND *error)
 {
@@ -1079,6 +1152,12 @@ void tox_callback_file_recv_chunk(Tox *tox, tox_file_recv_chunk_cb *callback)
 {
     Messenger *m = tox;
     callback_file_data(m, callback);
+}
+
+void tox_callback_file_abort(Tox *tox, tox_file_abort_cb *callback)
+{
+    Messenger *m = tox;
+    callback_file_abort(m, callback);
 }
 
 void tox_callback_conference_invite(Tox *tox, tox_conference_invite_cb *callback)
@@ -1549,3 +1628,23 @@ uint16_t tox_self_get_tcp_port(const Tox *tox, TOX_ERR_GET_PORT *error)
     SET_ERROR_PARAMETER(error, TOX_ERR_GET_PORT_NOT_BOUND);
     return 0;
 }
+
+#if defined(ELASTOS_BUILD)
+int tox_self_get_random_tcp_relay(const Tox *tox, uint8_t *ip, uint8_t *public_key)
+{
+    const Messenger *m = tox;
+    IP_Port ip_port;
+    int rc;
+
+    if (!ip)
+        return -1;
+
+    rc = messenger_get_random_tcp_relay_addr(m, &ip_port, public_key);
+    if (rc < 0)
+        return rc;
+
+    memcpy(ip, &ip_port.ip.ip4, sizeof(uint32_t));
+    return 0;
+}
+#endif
+

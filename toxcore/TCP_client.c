@@ -21,11 +21,35 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include "TCP_client.h"
+
+#if defined(ELASTOS_BUILD)
+#include "network.h"
+#endif
 
 #include "util.h"
 
@@ -365,18 +389,19 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
         }
     }
 
-    VLA(uint8_t, packet, sizeof(uint16_t) + length + CRYPTO_MAC_SIZE);
+    ELASTOS_VLA(uint8_t, packet, sizeof(uint16_t) + length + CRYPTO_MAC_SIZE);
 
     uint16_t c_length = net_htons(length + CRYPTO_MAC_SIZE);
     memcpy(packet, &c_length, sizeof(uint16_t));
     int len = encrypt_data_symmetric(con->shared_key, con->sent_nonce, data, length, packet + sizeof(uint16_t));
 
-    if ((unsigned int)len != (SIZEOF_VLA(packet) - sizeof(uint16_t))) {
+    if ((unsigned int)len != (ELASTOS_SIZEOF_VLA(packet) - sizeof(uint16_t))) {
         return -1;
     }
 
+    ela_magic_set(packet);
     if (priority) {
-        len = sendpriority ? send(con->sock, (const char *)packet, SIZEOF_VLA(packet), MSG_NOSIGNAL) : 0;
+        len = sendpriority ? send(con->sock, (const char *)ela_rewind(packet), ela_rewind_sizeof(packet), MSG_NOSIGNAL) : 0;
 
         if (len <= 0) {
             len = 0;
@@ -384,14 +409,14 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
 
         increment_nonce(con->sent_nonce);
 
-        if ((unsigned int)len == SIZEOF_VLA(packet)) {
+        if ((unsigned int)len == ela_rewind_sizeof(packet)) {
             return 1;
         }
 
-        return client_add_priority(con, packet, SIZEOF_VLA(packet), len);
+        return client_add_priority(con, ela_rewind(packet), ela_rewind_sizeof(packet), len);
     }
 
-    len = send(con->sock, (const char *)packet, SIZEOF_VLA(packet), MSG_NOSIGNAL);
+    len = send(con->sock, (const char *)ela_rewind(packet), ela_rewind_sizeof(packet), MSG_NOSIGNAL);
 
     if (len <= 0) {
         return 0;
@@ -399,12 +424,12 @@ static int write_packet_TCP_client_secure_connection(TCP_Client_Connection *con,
 
     increment_nonce(con->sent_nonce);
 
-    if ((unsigned int)len == SIZEOF_VLA(packet)) {
+    if ((unsigned int)len == ela_rewind_sizeof(packet)) {
         return 1;
     }
 
-    memcpy(con->last_packet, packet, SIZEOF_VLA(packet));
-    con->last_packet_length = SIZEOF_VLA(packet);
+    memcpy(con->last_packet, ela_rewind(packet), ela_rewind_sizeof(packet));
+    con->last_packet_length = ela_rewind_sizeof(packet);
     con->last_packet_sent = len;
     return 1;
 }

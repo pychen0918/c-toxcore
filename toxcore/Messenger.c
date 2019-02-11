@@ -21,6 +21,26 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -915,7 +935,7 @@ static void check_friend_tcp_udp(Messenger *m, int32_t friendnumber, void *userd
     m->friendlist[friendnumber].last_connection_udp_tcp = ret;
 }
 
-static void break_files(const Messenger *m, int32_t friendnumber);
+static void break_files(Messenger *m, int32_t friendnumber, void *userdata);
 static void check_friend_connectionstatus(Messenger *m, int32_t friendnumber, uint8_t status, void *userdata)
 {
     if (status == NOFRIEND) {
@@ -927,7 +947,7 @@ static void check_friend_connectionstatus(Messenger *m, int32_t friendnumber, ui
 
     if (is_online != was_online) {
         if (was_online) {
-            break_files(m, friendnumber);
+            break_files(m, friendnumber, userdata);
             clear_receipts(m, friendnumber);
         } else {
             m->friendlist[friendnumber].name_sent = 0;
@@ -1012,6 +1032,16 @@ void callback_file_sendrequest(Messenger *m, void (*function)(Messenger *m,  uin
     m->file_sendrequest = function;
 }
 
+/* Set the callback for file query requests.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, const char *filename, const char *message, void *userdata)
+ *
+ */
+void callback_file_query(Messenger *m, void (*function)(Messenger *m, uint32_t, const char *, const char *, void *))
+{
+    m->file_filequery = function;
+}
+
 /* Set the callback for file control requests.
  *
  *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, unsigned int control_type, void *userdata)
@@ -1041,6 +1071,16 @@ void callback_file_data(Messenger *m, void (*function)(Messenger *m, uint32_t, u
 void callback_file_reqchunk(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, uint64_t, size_t, void *))
 {
     m->file_reqchunk = function;
+}
+
+/* Set the callback when file get abort.
+ *
+ *  Function(Tox *tox, uint32_t friendnumber, uint32_t filenumber, const uint8_t *file_id, size_t length, void *userdata);
+ *
+ */
+void callback_file_abort(Messenger *m, void (*function)(Messenger *m, uint32_t, uint32_t, const uint8_t *, size_t, void *))
+{
+    m->file_abort = function;
 }
 
 #define MAX_FILENAME_LENGTH 255
@@ -1180,6 +1220,54 @@ long int new_filesender(const Messenger *m, int32_t friendnumber, uint32_t file_
     ++m->friendlist[friendnumber].num_sending_files;
 
     return i;
+}
+
+static int send_file_query_packet(const Messenger *m, int32_t friendnumber, const char *filename, 
+        uint8_t filename_len, const char *message, uint8_t message_len)
+{
+    uint16_t data_len = sizeof(filename_len) + sizeof(message_len) + filename_len + message_len;
+
+    if((unsigned int)(1 + data_len) > MAX_CRYPTO_DATA_SIZE){
+        return -1;
+    }
+
+    VLA(uint8_t, packet, data_len);
+
+    if (data_len) {
+        packet[0] = filename_len;
+        packet[1] = message_len;
+        memcpy(&packet[2], filename, filename_len);
+        memcpy(&packet[2+filename_len], message, message_len);
+    }
+
+    return write_cryptpacket_id(m, friendnumber, PACKET_ID_FILE_QUERY, packet, SIZEOF_VLA(packet), 0);
+}
+
+/* Send a file query.
+ *
+ *  return 0 on success
+ *  return -1 if friend not valid.
+ *  return -2 if friend not online.
+ *  return -3 if packet failed to send.
+ */
+int file_query(const Messenger *m, int32_t friendnumber, const char *filename, const char *message)
+{
+    if (friend_not_valid(m, friendnumber)) {
+        return -1;
+    }
+
+    if (m->friendlist[friendnumber].status != FRIEND_ONLINE) {
+        return -2;
+    }
+
+    uint8_t filename_len = strlen(filename) <= UINT8_MAX ? strlen(filename) : UINT8_MAX;
+    uint8_t message_len = strlen(message) <= UINT8_MAX ? strlen(message) : UINT8_MAX;
+
+    if (!send_file_query_packet(m, friendnumber, filename, filename_len, message, message_len)) {
+        return -3;
+    }
+
+    return 0;
 }
 
 static int send_file_control_packet(const Messenger *m, int32_t friendnumber, uint8_t send_receive, uint8_t filenumber,
@@ -1587,23 +1675,34 @@ static void do_reqchunk_filecb(Messenger *m, int32_t friendnumber, void *userdat
 /* Run this when the friend disconnects.
  *  Kill all current file transfers.
  */
-static void break_files(const Messenger *m, int32_t friendnumber)
+static void break_files(Messenger *m, int32_t friendnumber, void *userdata)
 {
     uint32_t i;
 
-    // TODO(irungentoo): Inform the client which file transfers get killed with a callback?
     for (i = 0; i < MAX_CONCURRENT_FILE_PIPES; ++i) {
         if (m->friendlist[friendnumber].file_sending[i].status != FILESTATUS_NONE) {
             m->friendlist[friendnumber].file_sending[i].status = FILESTATUS_NONE;
+            if(m->file_abort){
+                m->file_abort(m, friendnumber, i, 
+                        m->friendlist[friendnumber].file_sending[i].id, 
+                        m->friendlist[friendnumber].file_sending[i].transferred,
+                        userdata);
+            }
         }
 
         if (m->friendlist[friendnumber].file_receiving[i].status != FILESTATUS_NONE) {
             m->friendlist[friendnumber].file_receiving[i].status = FILESTATUS_NONE;
+            if(m->file_abort){
+                m->file_abort(m, friendnumber, (i + 1) << 16, 
+                        m->friendlist[friendnumber].file_receiving[i].id, 
+                        m->friendlist[friendnumber].file_receiving[i].transferred,
+                        userdata);
+            }
         }
     }
 }
 
-static struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
+struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t filenumber,
         uint32_t *real_filenumber, Friend *sender)
 {
     struct File_Transfers *ft;
@@ -1621,6 +1720,29 @@ static struct File_Transfers *get_file_transfer(uint8_t receive_send, uint8_t fi
     }
 
     return ft;
+}
+
+/* return -1 on failure, 0 on success.
+ */
+static int handle_filequery(Messenger *m, int32_t friendnumber, const uint8_t *data, uint16_t length, void *userdata)
+{
+    char filename[MAX_CRYPTO_DATA_SIZE];
+    char message[MAX_CRYPTO_DATA_SIZE];
+    uint8_t filename_len, message_len;
+
+    filename_len = data[0];
+    message_len = data[1];
+
+    strncpy(filename, &data[2], filename_len);
+    filename[filename_len] = '\0';
+    strncpy(message, &data[2+filename_len], message_len);
+    message[message_len] = '\0';
+
+    if(m->file_filequery){
+        m->file_filequery(m, friendnumber, filename, message, userdata);
+    }
+
+    return 0;
 }
 
 /* return -1 on failure, 0 on success.
@@ -2289,6 +2411,16 @@ static int m_handle_packet(void *object, int i, const uint8_t *temp, uint16_t le
                 (*m->file_sendrequest)(m, i, real_filenumber, file_type, filesize, filename, filename_length,
                                        userdata);
             }
+
+            break;
+        }
+
+        case PACKET_ID_FILE_QUERY: {
+            if (data_length < 1) {
+                break;
+            }
+
+            handle_filequery(m, i, data, data_length, userdata);
 
             break;
         }
@@ -3154,3 +3286,14 @@ uint32_t copy_friendlist(Messenger const *m, uint32_t *out_list, uint32_t list_s
 
     return ret;
 }
+
+#if defined(ELASTOS_BUILD)
+int messenger_get_random_tcp_relay_addr(const Messenger *m, IP_Port *ip_port, uint8_t *public_key)
+{
+    if (!m || !ip_port)
+        return -1;
+
+    return crypto_get_random_tcp_relay_addr(m->net_crypto, ip_port, public_key);
+}
+#endif
+

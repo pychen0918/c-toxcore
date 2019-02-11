@@ -21,6 +21,25 @@
  * You should have received a copy of the GNU General Public License
  * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/*
+ * Copyright (c) 2019 ioeXNetwork
+ *
+ * This file is part of Tox, the free peer to peer instant messenger.
+ *
+ * Tox is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Tox is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Tox.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -364,7 +383,7 @@ static int handle_LANdiscovery(void *object, IP_Port source, const uint8_t *pack
 
 int send_LANdiscovery(uint16_t port, DHT *dht)
 {
-    uint8_t data[CRYPTO_PUBLIC_KEY_SIZE + 1];
+    ELASTOS_VLA(uint8_t, data, CRYPTO_PUBLIC_KEY_SIZE + 1);
     data[0] = NET_PACKET_LAN_DISCOVERY;
     id_copy(data + 1, dht->self_public_key);
 
